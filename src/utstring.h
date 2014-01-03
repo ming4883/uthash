@@ -39,6 +39,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdarg.h>
 #define oom() exit(-1)
 
+#ifndef utstring_malloc
+#define utstring_malloc(sz) malloc(sz)            /* malloc fcn                      */
+#endif
+#ifndef utstring_realloc
+#define utstring_realloc(ptr,sz) realloc(ptr,sz)  /* realloc fcn                      */
+#endif
+#ifndef utstring_mfree
+#define utstring_mfree(ptr) free(ptr)             /* free fcn                        */
+#endif
+
 typedef struct {
     char *d;
     size_t n; /* allocd size */
@@ -48,7 +58,7 @@ typedef struct {
 #define utstring_reserve(s,amt)                            \
 do {                                                       \
   if (((s)->n - (s)->i) < (size_t)(amt)) {                 \
-     (s)->d = (char*)realloc((s)->d, (s)->n + amt);        \
+     (s)->d = (char*)utstring_realloc((s)->d, (s)->n + amt);        \
      if ((s)->d == NULL) oom();                            \
      (s)->n += amt;                                        \
   }                                                        \
@@ -63,20 +73,21 @@ do {                                                       \
 
 #define utstring_done(s)                                   \
 do {                                                       \
-  if ((s)->d != NULL) free((s)->d);                        \
+  if ((s)->d != NULL) utstring_mfree((s)->d);              \
   (s)->n = 0;                                              \
 } while(0)
 
 #define utstring_free(s)                                   \
 do {                                                       \
   utstring_done(s);                                        \
-  free(s);                                                 \
+  utstring_mfree(s);                                       \
 } while(0)
 
 #define utstring_new(s)                                    \
 do {                                                       \
-   s = (UT_string*)calloc(sizeof(UT_string),1);            \
+   s = (UT_string*)utstring_malloc(sizeof(UT_string));     \
    if (!s) oom();                                          \
+   memset(s,sizeof(UT_string), 0);                         \
    utstring_init(s);                                       \
 } while(0)
 
@@ -322,7 +333,7 @@ _UNUSED_ static long utstring_find(
     V_HaystackLen = s->i - V_StartPosition;
     if ( (V_HaystackLen >= P_NeedleLen) && (P_NeedleLen > 0) )
     {
-        V_KMP_Table = (long *)malloc(sizeof(long) * (P_NeedleLen + 1));
+        V_KMP_Table = (long *)utstring_malloc(sizeof(long) * (P_NeedleLen + 1));
         if (V_KMP_Table != NULL)
         {
             _utstring_BuildTable(P_Needle, P_NeedleLen, V_KMP_Table);
@@ -337,7 +348,7 @@ _UNUSED_ static long utstring_find(
                 V_FindPosition += V_StartPosition;
             }
 
-            free(V_KMP_Table);
+            utstring_mfree(V_KMP_Table);
         }
     }
 
@@ -368,7 +379,7 @@ _UNUSED_ static long utstring_findR(
     V_HaystackLen = V_StartPosition + 1;
     if ( (V_HaystackLen >= P_NeedleLen) && (P_NeedleLen > 0) )
     {
-        V_KMP_Table = (long *)malloc(sizeof(long) * (P_NeedleLen + 1));
+        V_KMP_Table = (long *)utstring_malloc(sizeof(long) * (P_NeedleLen + 1));
         if (V_KMP_Table != NULL)
         {
             _utstring_BuildTableR(P_Needle, P_NeedleLen, V_KMP_Table);
@@ -379,7 +390,7 @@ _UNUSED_ static long utstring_findR(
                                              P_NeedleLen, 
                                              V_KMP_Table);
 
-            free(V_KMP_Table);
+            utstring_mfree(V_KMP_Table);
         }
     }
 
